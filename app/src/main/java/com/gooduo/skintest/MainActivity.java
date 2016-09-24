@@ -27,6 +27,7 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import java.lang.ref.WeakReference;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -75,6 +76,12 @@ public class MainActivity extends AppCompatActivity {
                     D.i("is Connected? "+isConnect);
 //                    sDevice.connectGatt(this,)
                     break;
+                case BleClass.RECEIVE_NOTIFY:{
+                    HashMap<String,Integer> data=(HashMap<String,Integer>)msg.obj;
+                    D.i("get Data at main thread water: "+data.get(BleClass.SKIN_WATER));
+                    D.i("get Data at main thread oil:"+data.get(BleClass.SKIN_OIL));
+
+                }
 
                 default:
                     break;
@@ -159,7 +166,12 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-//    @Override
+    @Override
+    protected void onDestroy() {
+        System.exit(0);
+        super.onDestroy();
+    }
+    //    @Override
 //    protected void onListItemClick(ListView l, View v, int position, long id) {
 //        final BluetoothDevice device = mLeDeviceListAdapter.getDevice(position);
 //        if (device == null) return;
@@ -218,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothLeClass.OnServiceDiscoverListener mOnServiceDiscover = new BluetoothLeClass.OnServiceDiscoverListener() {
         @Override
         public void onServiceDiscover(BluetoothGatt gatt) {
-            displayGattServices(mBLE.getSupportedGattServices());
+//            displayGattServices(mBLE.getSupportedGattServices());
         }
     };
 //    private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
@@ -268,63 +280,63 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private void displayGattServices(List<BluetoothGattService> gattServices) {
-        if (null == gattServices) return;
-        for (BluetoothGattService gattService : gattServices) {
-            int type = gattService.getType();
-            Log.e("godlee", "-->service type:" + Utils.getServiceType(type));
-            Log.e("godlee", "-->includedServices size:" + gattService.getIncludedServices().size());
-            Log.e("godlee", "-->service uuid:" + gattService.getUuid());
-
-            //-----Characteristics的字段信息-----//
-            List<BluetoothGattCharacteristic> gattCharacteristics = gattService.getCharacteristics();
-            for (final BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
-                Log.e("godlee", "---->char uuid:" + gattCharacteristic.getUuid());
-
-                int permission = gattCharacteristic.getPermissions();
-                Log.e("godlee", "---->char permission:" + Utils.getCharPermission(permission));
-
-                int property = gattCharacteristic.getProperties();
-                Log.e("godlee", "---->char property:" + Utils.getCharPropertie(property));
-
-                byte[] data = gattCharacteristic.getValue();
-                if (data != null && data.length > 0) {
-                    Log.e("godlee", "---->char value:" + new String(data));
-                }
-
-                //UUID_KEY_DATA是可以跟蓝牙模块串口通信的Characteristic
-                if (gattCharacteristic.getUuid().toString().equals("0x123")) {
-                    //测试读取当前Characteristic数据，会触发mOnDataAvailable.onCharacteristicRead()
-                    mHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            mBLE.readCharacteristic(gattCharacteristic);
-                        }
-                    }, 500);
-
-                    //接受Characteristic被写的通知,收到蓝牙模块的数据后会触发mOnDataAvailable.onCharacteristicWrite()
-                    mBLE.setCharacteristicNotification(gattCharacteristic, true);
-                    //设置数据内容
-                    gattCharacteristic.setValue("send data->");
-                    //往蓝牙模块写入数据
-                    mBLE.writeCharacteristic(gattCharacteristic);
-                }
-
-                //-----Descriptors的字段信息-----//
-                List<BluetoothGattDescriptor> gattDescriptors = gattCharacteristic.getDescriptors();
-                for (BluetoothGattDescriptor gattDescriptor : gattDescriptors) {
-                    Log.e("godlee", "-------->desc uuid:" + gattDescriptor.getUuid());
-                    int descPermission = gattDescriptor.getPermissions();
-                    Log.e("godlee", "-------->desc permission:" + Utils.getDescPermission(descPermission));
-
-                    byte[] desData = gattDescriptor.getValue();
-                    if (desData != null && desData.length > 0) {
-                        Log.e("godlee", "-------->desc value:" + new String(desData));
-                    }
-                }
-            }
-        }
-    }
+//    private void displayGattServices(List<BluetoothGattService> gattServices) {
+//        if (null == gattServices) return;
+//        for (BluetoothGattService gattService : gattServices) {
+//            int type = gattService.getType();
+//            Log.e("godlee", "-->service type:" + Utils.getServiceType(type));
+//            Log.e("godlee", "-->includedServices size:" + gattService.getIncludedServices().size());
+//            Log.e("godlee", "-->service uuid:" + gattService.getUuid());
+//
+//            //-----Characteristics的字段信息-----//
+//            List<BluetoothGattCharacteristic> gattCharacteristics = gattService.getCharacteristics();
+//            for (final BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
+//                Log.e("godlee", "---->char uuid:" + gattCharacteristic.getUuid());
+//
+//                int permission = gattCharacteristic.getPermissions();
+//                Log.e("godlee", "---->char permission:" + Utils.getCharPermission(permission));
+//
+//                int property = gattCharacteristic.getProperties();
+//                Log.e("godlee", "---->char property:" + Utils.getCharPropertie(property));
+//
+//                byte[] data = gattCharacteristic.getValue();
+//                if (data != null && data.length > 0) {
+//                    Log.e("godlee", "---->char value:" + new String(data));
+//                }
+//
+//                //UUID_KEY_DATA是可以跟蓝牙模块串口通信的Characteristic
+//                if (gattCharacteristic.getUuid().toString().equals("0x123")) {
+//                    //测试读取当前Characteristic数据，会触发mOnDataAvailable.onCharacteristicRead()
+//                    mHandler.postDelayed(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            mBLE.readCharacteristic(gattCharacteristic);
+//                        }
+//                    }, 500);
+//
+//                    //接受Characteristic被写的通知,收到蓝牙模块的数据后会触发mOnDataAvailable.onCharacteristicWrite()
+//                    mBLE.setCharacteristicNotification(gattCharacteristic, true);
+//                    //设置数据内容
+//                    gattCharacteristic.setValue("send data->");
+//                    //往蓝牙模块写入数据
+//                    mBLE.writeCharacteristic(gattCharacteristic);
+//                }
+//
+//                //-----Descriptors的字段信息-----//
+//                List<BluetoothGattDescriptor> gattDescriptors = gattCharacteristic.getDescriptors();
+//                for (BluetoothGattDescriptor gattDescriptor : gattDescriptors) {
+//                    Log.e("godlee", "-------->desc uuid:" + gattDescriptor.getUuid());
+//                    int descPermission = gattDescriptor.getPermissions();
+//                    Log.e("godlee", "-------->desc permission:" + Utils.getDescPermission(descPermission));
+//
+//                    byte[] desData = gattDescriptor.getValue();
+//                    if (desData != null && desData.length > 0) {
+//                        Log.e("godlee", "-------->desc value:" + new String(desData));
+//                    }
+//                }
+//            }
+//        }
+//    }
 
     class mWebViewClint extends WebViewClient {
         @Override
