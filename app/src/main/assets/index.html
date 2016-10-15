@@ -8,7 +8,7 @@
     <title>蓝牙检测仪</title>
 </head>
 <body>
-    webView页面妈的
+    webView页面
 <div><input type="button" value="search" class="search-button"></div>
 
 
@@ -17,6 +17,10 @@
 <div><input type="button" value="get" class="get-button"></div>
 
 <div><input type="button" value="read" class="read-button"></div>
+
+<div class=value>
+
+</div>
 </body>
 <script>
     $('.search-button').click(function(){
@@ -29,6 +33,15 @@
         window.ble.read();
     })
 
+</script>
+<script>
+    function onGetData(data){
+    alert(data);
+    var fdata=eval("("+data+")");
+
+    $('.value').empty
+    $('.value').append("水分："+fdata.water)
+    }
 </script>
 
 

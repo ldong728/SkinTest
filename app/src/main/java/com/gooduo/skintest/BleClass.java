@@ -89,6 +89,7 @@ public class BleClass {
     public void setDataListener(OnDataAvailableListener l){
         mDataAvailableListener=l;
     }
+    public void setServiceDiscover(OnServiceDiscoverListener l){mServiceDiscoverListener=l;}
 
     public boolean connect(final String address) {
         if (mBluetoothAdapter == null || address == null) {
@@ -112,16 +113,25 @@ public class BleClass {
            D.i( "Device not found.  Unable to connect.");
             return false;
         }
-        // We want to directly connect to the device, so we are setting the autoConnect
-        // parameter to false.
         mBluetoothGatt = device.connectGatt(mContext, false, mBleGattCallback);
        D.i( "Trying to create a new connection.");
         mBluetoothDeviceAddress = address;
         return true;
     }
-//    public void disconnect(){
-//
-//    }
+    public List<BluetoothGattService> getServiceList(){
+        if(null!=mBluetoothGatt){
+            return mBluetoothGatt.getServices();
+        }else{
+            return null;
+        }
+    }
+    public void setDefultWriteCharacteristic(BluetoothGattCharacteristic bgc){
+        mWriteCharacteristic=bgc;
+    }
+    public boolean discoverServices(){
+            return mBluetoothGatt.discoverServices();
+    }
+
 
     protected void scanLeDevice(final boolean enable,final ScanCallback mScanCallback) {
         final BluetoothLeScanner sScanner = mBluetoothAdapter.getBluetoothLeScanner();
@@ -145,9 +155,7 @@ public class BleClass {
 
         } else {
             mScanning = false;
-//            D.i("stopScan2");
             sScanner.stopScan(mScanCallback);
-//            mBluetoothAdapter.stopLeScan(mLeScanCallback);
         }
     }
     public void disconnect() {
@@ -200,7 +208,22 @@ public class BleClass {
             D.i( "BluetoothAdapter not initialized");
             return;
         }
-        mBluetoothGatt.setCharacteristicNotification(characteristic, enabled);
+//        mBluetoothGatt.setCharacteristicNotification(characteristic, enabled);
+        if(mBluetoothGatt.setCharacteristicNotification(characteristic,enabled))
+        {
+            if(enabled){
+                mReadChracteristic=characteristic;
+                BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID.fromString(CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID));
+                writeDescriptor(descriptor,BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                D.i("descriptor set ok");
+            }else{
+                D.i("disable Notification");
+            }
+            //设置通知接收
+
+        }else{
+            D.i("set notification fail");
+        }
     }
 //    public void writeCharacteristic(BluetoothGattCharacteristic characteristic){
 //        GattOrder sC=new GattChracteristicOrder(characteristic,GATT_MODE_WRITE);
@@ -308,9 +331,10 @@ public class BleClass {
     };
 
 
-    BluetoothGattCallback mBleGattCallback=new BluetoothGattCallback() {
+    private BluetoothGattCallback mBleGattCallback=new BluetoothGattCallback() {
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            sendGattOrder();
             mDataAvailableListener.onCharacteristicNoticefy(gatt,characteristic);
             super.onCharacteristicChanged(gatt, characteristic);
         }
@@ -323,12 +347,14 @@ public class BleClass {
 
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            sendGattOrder();
             mDataAvailableListener.onCharacteristicRead(gatt,characteristic,status);
             super.onCharacteristicRead(gatt, characteristic, status);
         }
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            sendGattOrder();
             mDataAvailableListener.onCharacteristicWrite(gatt, characteristic,status);
             super.onCharacteristicWrite(gatt, characteristic, status);
         }
@@ -384,30 +410,30 @@ public class BleClass {
     private OnDataAvailableListener mDataAvailableListener=new OnDataAvailableListener() {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            sendGattOrder();
+//            sendGattOrder();
             D.i("characteristic");
         }
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,int status) {
-            sendGattOrder();
+//            sendGattOrder();
             D.i("characteristic Write");
         }
 
         @Override
         public void onCharacteristicNoticefy(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            sendGattOrder();
+//            sendGattOrder();
             D.i("CharacteristicChanged");
             byte[] receiveDate=characteristic.getValue();
-            int skinWater=((int)receiveDate[2]<<8)+(int)receiveDate[3];
-            int skinOil=((int)receiveDate[4]<<8)+(int)receiveDate[5];
+            int skinWater=((receiveDate[2]&0xff)<<8)+(receiveDate[3]&0xff);
+            int skinOil=((receiveDate[4]&0xff)<<8)+(receiveDate[5]&0xff);
             HashMap<String,Integer> sMap=new HashMap<String,Integer>();
             sMap.put(SKIN_WATER,skinWater);
             sMap.put(SKIN_OIL,skinOil);
 //            D.i("temp move:"+((int)receiveDate[2]<<8));
 //            D.i("water:"+skinWater+" oil:"+skinOil);
 //            int
-//            D.i("getChacteristic:"+Tool.bytesToHexString(characteristic.getValue()));
+            D.i("getChacteristic:"+Tool.bytesToHexString(characteristic.getValue()));
             Message msg= mHandler.obtainMessage(RECEIVE_NOTIFY,sMap);
             mHandler.sendMessage(msg);
 
@@ -440,12 +466,13 @@ public class BleClass {
 //                            bgc.setValue(new byte[]{(byte)0x68,0x04,0x34,0x45,(byte)0x98,(byte)0xa1,(byte)0xee});
 //                            mBluetoothGatt.writeCharacteristic(bgc);
                             mWriteCharacteristic=bgc;
-                            writeCharacteristic(bgc,new byte[]{(byte)0x68,0x04,0x34,0x45,(byte)0x98,(byte)0xa1,(byte)0xee});
+                            writeCharacteristic(bgc,new byte[]{(byte)0x68,0x04,0x34,0x45,(byte)0x98,(byte)0xa1,(byte)0xee});//确认联结，防止设备认为误连而断开
                         }
                         if(uuidStr.equals(CHARACTERISTIC_NOTIFICATION_UUID)){
                             D.i("set notification");
                             if(mBluetoothGatt.setCharacteristicNotification(bgc,true)){
 //                                D.i("set notification ok");
+                                //设置通知接收
                                 mReadChracteristic=bgc;
                                 BluetoothGattDescriptor descriptor = bgc.getDescriptor(UUID.fromString(CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID));
                                 writeDescriptor(descriptor,BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
@@ -501,7 +528,7 @@ public class BleClass {
             }
         }
      }
-    public class GattDescriptorOrder implements GattOrder{
+    private class GattDescriptorOrder implements GattOrder{
         private int mMode;
         private byte[] mData;
         private BluetoothGattDescriptor mD;

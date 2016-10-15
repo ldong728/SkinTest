@@ -6,10 +6,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
-import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
-import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
@@ -26,6 +23,9 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.List;
@@ -40,8 +40,9 @@ public class MainActivity extends AppCompatActivity {
 //    private static final long SCAN_PERIOD = 10000;
     private BluetoothLeClass mBLE;
     private static BleClass mBle;
+    private static JsBleBridge mJsBleBridge;
+    private static WebView mWebView;
     private boolean mScanning;
-    private WebView mWebView;
     private Handler mHandler = new MyHandler(this);
 
     private static class MyHandler extends Handler {
@@ -55,6 +56,18 @@ public class MainActivity extends AppCompatActivity {
         public void handleMessage(Message msg) {
             AppCompatActivity sActivity = mActivity.get();
             switch (msg.what) {
+                case JsBridge.JS: {
+                    JSONObject obj=(JSONObject)msg.obj;
+                    try{
+                        String function=obj.getString("function");
+                        String value=obj.getString("value");
+                        mWebView.loadUrl("javascript:"+function+"('"+value+"')");
+                    }catch(JSONException e){
+                        Log.e("godlee",e.getMessage());
+                        e.printStackTrace();
+                    }
+                    break;
+                }
                 case JsBleBridge.CTR_SIGNAL_SCAN:
                     mBle.scanLeDevice(true);
                     break;
@@ -80,6 +93,16 @@ public class MainActivity extends AppCompatActivity {
                     HashMap<String,Integer> data=(HashMap<String,Integer>)msg.obj;
                     D.i("get Data at main thread water: "+data.get(BleClass.SKIN_WATER));
                     D.i("get Data at main thread oil:"+data.get(BleClass.SKIN_OIL));
+//                    JSONObject obj=new JSONObject();
+//                    try{
+//                        obj.accumulate("water",data.get(BleClass.SKIN_WATER));
+//                        obj.accumulate("oil",data.get(BleClass.SKIN_OIL));
+//                        D.i(obj.toString());
+//                        mJsBleBridge.postToJs("onGetData",obj.toString());
+//                    }catch(JSONException e){
+//                        e.printStackTrace();
+//                    }
+
 
                 }
 
@@ -127,8 +150,9 @@ public class MainActivity extends AppCompatActivity {
         mWebView.setWebChromeClient(new WebChromeClient());
         mWebView.setWebViewClient(new mWebViewClint());
         mWebView.loadUrl("file:///android_asset/index.html");
+        mJsBleBridge=new JsBleBridge(mHandler,mBle);
         setContentView(mWebView);
-        mWebView.addJavascriptInterface(new JsBleBridge(mHandler,mBle),"ble");
+        mWebView.addJavascriptInterface(mJsBleBridge,"ble");
         temp();
 //        mWebView.addJavascriptInterface(mWifiBridge, "wifi");
 //        mWebView.addJavascriptInterface(mLightBridge, "light");

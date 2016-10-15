@@ -10,7 +10,7 @@ import org.json.JSONObject;
  * Created by Administrator on 2016/7/30.
  */
 public class JsBridge {
-    public static final int JS=0xcafe;
+    public static final int JS=0x12cafe;
     public static final int LOCAL_LINK=0xabcd;
     public static final int ONLINE_LINK=0xdcba;
     public static final int TO_OPT=0xbabe2;
